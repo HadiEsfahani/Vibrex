@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Micro-Vibration Motion Magnifier</title>
+<title>Micro-Vibration Detector</title>
 <style>
 :root{--bg:#0f1117;--card:#1a1d26;--text:#f3f4f6;--muted:#9ca3af;--border:#2e3446;--accent:#3b82f6}
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
@@ -15,7 +15,7 @@ canvas{width:100%;height:100%;display:block}
 video{display:none}
 .badge{position:absolute;top:8px;left:8px;background:#000b;padding:4px 8px;border-radius:6px;font:700 .7rem monospace;color:#4ade80}
 .legend{position:absolute;bottom:8px;left:8px;right:8px;background:#000b;padding:7px 10px;border-radius:8px;font-size:.68rem}
-.bar{height:7px;border-radius:4px;background:linear-gradient(90deg,#808080 0%,#2563eb 22%,#06b6d4 42%,#eab308 62%,#f97316 80%,#ef2222 100%)}
+.bar{height:7px;border-radius:4px;background:linear-gradient(90deg,#16a34a 0%,#2563eb 22%,#06b6d4 42%,#eab308 62%,#f97316 80%,#ef2222 100%)}
 .labels{display:flex;justify-content:space-between;color:#c5c7cc;margin-top:3px}
 .panel{width:100%;max-width:640px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;display:flex;flex-direction:column;gap:11px}
 .row{display:flex;flex-direction:column;gap:5px}.label{display:flex;justify-content:space-between;color:var(--muted);font-size:.8rem}.value{color:#fff;font-family:monospace;font-weight:700}
@@ -28,19 +28,19 @@ select{width:100%}button{font-weight:600;cursor:pointer}.buttons{display:grid;gr
 </head>
 <body>
 <header>
-<h1>🔬 Micro-Vibration Motion Magnifier</h1>
-<div class="sub">Dense pixel motion • sub-pixel sensitivity • up to 200× amplification</div>
+<h1>🔬 Micro-Vibration Detector</h1>
+<div class="sub">Dense per-pixel vibration detection • sub-pixel sensitivity</div>
 </header>
 
 <div class="viewport">
 <video id="webcam" playsinline muted autoplay></video>
 <canvas id="output"></canvas>
 <div class="badge" id="fps">0 FPS</div>
-<div class="legend"><div class="bar"></div><div class="labels"><span>Still / Noise</span><span>Low</span><span>Medium</span><span>High</span><span>Very high</span></div></div>
+<div class="legend"><div class="bar"></div><div class="labels"><span>No motion</span><span>Low</span><span>Medium</span><span>High</span><span>Very high</span></div></div>
 </div>
 
 <div class="panel">
-<div class="row"><div class="label"><span>Motion Amplification</span><span class="value" id="gainVal">200×</span></div>
+<div class="row"><div class="label"><span>Vibration Gain</span><span class="value" id="gainVal">200×</span></div>
 <input id="gain" type="range" min="1" max="200" step="1" value="200"></div>
 
 <div class="row"><div class="label"><span>Pixel Sensitivity</span><span class="value" id="sensVal">High</span></div>
@@ -49,11 +49,14 @@ select{width:100%}button{font-weight:600;cursor:pointer}.buttons{display:grid;gr
 <div class="row"><div class="label"><span>Motion Smoothing</span><span class="value" id="smoothVal">0.35</span></div>
 <input id="smooth" type="range" min="0.05" max="0.9" step="0.01" value="0.35"></div>
 
+<div class="row"><div class="label"><span>Vibration Bandwidth</span><span class="value" id="bandVal">0.08</span></div>
+<input id="band" type="range" min="0.01" max="0.30" step="0.01" value="0.08"></div>
+
 <div class="row"><div class="label"><span>Display</span></div>
 <select id="mode">
-<option value="heatmap">Dense Motion Heatmap</option>
-<option value="overlay">Heatmap + Live Image</option>
-<option value="vectors">Motion Field (debug)</option>
+<option value="heatmap">Vibration Heatmap</option>
+<option value="overlay">Vibration + Live Image</option>
+<option value="vectors">Vibration Field (debug)</option>
 </select></div>
 
 <label class="check"><input id="enhance" type="checkbox" checked> Enhance sub-pixel motion</label>
@@ -63,7 +66,7 @@ select{width:100%}button{font-weight:600;cursor:pointer}.buttons{display:grid;gr
 <button id="reset" class="primary">🎯 Reset / Calibrate</button>
 </div>
 <div class="status" id="status">
-<strong>How it works:</strong> This version estimates a motion vector for each image pixel instead of simply subtracting frames. That avoids the old “moving borders only” effect and colors the whole moving region according to displacement magnitude. Put the phone on a rigid mount, wait for exposure/focus to settle, then calibrate.
+<strong>How it works:</strong> A dense sub-pixel motion vector is estimated for every pixel. The detector removes each pixel’s slow/steady motion and displays the remaining vibration component. Green = no measurable vibration, blue = very small vibration, then cyan → yellow → orange → red as vibration increases. This is intended for detecting tiny pipe, housing, shaft-support or machine vibration rather than just highlighting moving edges.
 </div>
 </div>
 
@@ -71,11 +74,12 @@ select{width:100%}button{font-weight:600;cursor:pointer}.buttons{display:grid;gr
 const video=document.getElementById('webcam'), out=document.getElementById('output'), octx=out.getContext('2d',{willReadFrequently:true});
 const gainEl=document.getElementById('gain'), sensEl=document.getElementById('sens'), smoothEl=document.getElementById('smooth');
 const modeEl=document.getElementById('mode'), enhanceEl=document.getElementById('enhance');
-const gainVal=document.getElementById('gainVal'),sensVal=document.getElementById('sensVal'),smoothVal=document.getElementById('smoothVal');
+const bandEl=document.getElementById('band');
+const gainVal=document.getElementById('gainVal'),sensVal=document.getElementById('sensVal'),smoothVal=document.getElementById('smoothVal'),bandVal=document.getElementById('bandVal');
 const fpsEl=document.getElementById('fps'), statusEl=document.getElementById('status');
 let facing='environment',stream=null;
 const W=320; let H=240, pc=document.createElement('canvas'), pctx=pc.getContext('2d',{willReadFrequently:true});
-let prev=null, flowU=null,flowV=null, magSmooth=null, calibrated=false, frameNo=0,lastFps=performance.now(),fpsCount=0;
+let prev=null, flowU=null,flowV=null, magSmooth=null, baseU=null,baseV=null, calibrated=false, frameNo=0,lastFps=performance.now(),fpsCount=0;
 
 // Heatmap: grey -> blue -> cyan -> yellow -> orange -> red
 const lut=new Uint8Array(256*3);
@@ -142,13 +146,14 @@ async function startCamera(){
   video.srcObject=stream;await video.play();
   const ratio=(video.videoHeight||3)/(video.videoWidth||4);
   H=Math.round(W*ratio);pc.width=W;pc.height=H;out.width=W;out.height=H;
-  prev=null;flowU=new Float32Array(W*H);flowV=new Float32Array(W*H);magSmooth=new Float32Array(W*H);calibrated=false;
+  prev=null;flowU=new Float32Array(W*H);flowV=new Float32Array(W*H);magSmooth=new Float32Array(W*H);baseU=new Float32Array(W*H);baseV=new Float32Array(W*H);calibrated=false;
  }catch(e){alert("Camera Access Error: "+e.message+"\nUse HTTPS and allow camera access.")}
 }
-function reset(){prev=null;flowU.fill(0);flowV.fill(0);magSmooth.fill(0);calibrated=false}
+function reset(){prev=null;flowU.fill(0);flowV.fill(0);magSmooth.fill(0);baseU.fill(0);baseV.fill(0);calibrated=false}
 gainEl.oninput=()=>gainVal.textContent=gainEl.value+"×";
 sensEl.oninput=()=>{let v=+sensEl.value;sensVal.textContent=v<.4?"Very High":v<.8?"High":v<1.5?"Medium":"Low"};
 smoothEl.oninput=()=>smoothVal.textContent=(+smoothEl.value).toFixed(2);
+bandEl.oninput=()=>bandVal.textContent=(+bandEl.value).toFixed(2);
 document.getElementById('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
 document.getElementById('reset').onclick=reset;
 
@@ -159,18 +164,23 @@ function process(){
  const rgba=pctx.getImageData(0,0,W,H);
  let cur=blur3(grayFromRGBA(rgba.data));
  if(!prev){prev=cur;return}
- const sensitivity=+sensEl.value, smoothing=+smoothEl.value, gain=+gainEl.value;
+ const sensitivity=+sensEl.value, smoothing=+smoothEl.value, gain=+gainEl.value, band=+bandEl.value;
  // Estimate dense sub-pixel displacement.
  denseFlow(cur,prev,flowU,flowV,enhanceEl.checked?3:2);
  const d=rgba.data,N=W*H,mode=modeEl.value;
  for(let i=0;i<N;i++){
-  let m=Math.hypot(flowU[i],flowV[i]);
-  // Adaptive sensor-noise floor: very small vectors are suppressed, not hard-edged.
-  const effective=Math.max(0,(m-sensitivity*0.08));
+  // Remove slow/steady motion so continuous machine motion does not mask tiny vibration.
+  // baseU/baseV are a slow local motion baseline; the residual is the vibration signal.
+  const bu=baseU[i], bv=baseV[i];
+  const ru=flowU[i]-bu, rv=flowV[i]-bv;
+  baseU[i]=bu*(1-band)+flowU[i]*band;
+  baseV[i]=bv*(1-band)+flowV[i]*band;
+  const m=Math.hypot(ru,rv);
+  // Soft noise floor. Increase Pixel Sensitivity to reveal smaller residual motion.
+  const effective=Math.max(0,(m-sensitivity*0.045));
   const sm=magSmooth[i]*(1-smoothing)+effective*smoothing;magSmooth[i]=sm;
-  // Gain maps displacement to visible heat. 200× means a 0.01-pixel displacement
-  // is treated as 2 pixels of visual motion before the heatmap normalization.
-  let q=Math.min(1,sm*gain*0.005);
+  // Gain controls how tiny the measured displacement must be to become visible.
+  let q=Math.min(1,sm*gain*0.010);
   // Soft nonlinear boost preserves tiny motion while still reaching red.
   q=1-Math.exp(-q*3.2);
   const k=Math.max(0,Math.min(255,Math.round(q*255))),li=k*3,j=i*4;
@@ -183,7 +193,7 @@ function process(){
    d[j+2]=Math.round(d[j+2]*(1-blend)+lut[li+2]*blend);
   }else{
    // Debug: vector direction encoded as hue, magnitude as brightness.
-   const ang=Math.atan2(flowV[i],flowU[i]), hue=(ang+Math.PI)/(2*Math.PI);
+   const ang=Math.atan2(rv,ru), hue=(ang+Math.PI)/(2*Math.PI);
    const s=.95,v=Math.max(.08,q),x=v*(1-Math.abs((hue*6)%2-1));
    let rr=0,gg=0,bb=0; const h=Math.floor(hue*6);
    if(h===0){rr=v;gg=x}else if(h===1){rr=x;gg=v}else if(h===2){gg=v;bb=x}else if(h===3){gg=x;bb=v}else if(h===4){rr=x;bb=v}else{rr=v;bb=x}
