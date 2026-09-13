@@ -1,571 +1,198 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Micro-Vibration & Motion Visualizer</title>
-  <style>
-    :root {
-      --bg: #0f1117;
-      --card-bg: #1a1d26;
-      --accent: #3b82f6;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --border: #2e3446;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      padding: 12px;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 12px;
-      width: 100%;
-      max-width: 520px;
-    }
-
-    header h1 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    header p {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-top: 3px;
-    }
-
-    .viewport-container {
-      position: relative;
-      width: 100%;
-      max-width: 520px;
-      aspect-ratio: 4/3;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--border);
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    video {
-      display: none;
-    }
-
-    .fps-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(0, 0, 0, 0.65);
-      color: #10b981;
-      font-size: 0.75rem;
-      font-family: monospace;
-      padding: 3px 8px;
-      border-radius: 6px;
-      pointer-events: none;
-    }
-
-    .color-legend {
-      position: absolute;
-      bottom: 8px;
-      left: 8px;
-      right: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 0.7rem;
-      pointer-events: none;
-    }
-
-    .legend-bar {
-      height: 6px;
-      width: 100%;
-      border-radius: 3px;
-      background: linear-gradient(to right, #808080, #2563eb, #06b6d4, #10b981, #eab308, #f97316, #ef4444);
-    }
-
-    .legend-labels {
-      display: flex;
-      justify-content: space-between;
-      color: var(--muted);
-    }
-
-    .controls-panel {
-      width: 100%;
-      max-width: 520px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      margin-top: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .control-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .control-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--muted);
-    }
-
-    .control-label span.value {
-      color: #fff;
-      font-family: monospace;
-      font-weight: 700;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      height: 6px;
-      background: #374151;
-      border-radius: 3px;
-      outline: none;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      cursor: pointer;
-      box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
-    }
-
-    select {
-      background: #272b38;
-      color: #fff;
-      border: 1px solid var(--border);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .button-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    button {
-      background: #272b38;
-      color: #fff;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    button:hover {
-      background: #32384a;
-      border-color: var(--accent);
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    button.primary {
-      background: #2563eb;
-      border-color: #3b82f6;
-    }
-
-    button.primary:hover {
-      background: #1d4ed8;
-    }
-
-    .status-box {
-      font-size: 0.75rem;
-      color: var(--muted);
-      background: #141721;
-      border: 1px dashed var(--border);
-      padding: 8px 12px;
-      border-radius: 8px;
-      line-height: 1.4;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Micro-Vibration Motion Magnifier</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d26;--text:#f3f4f6;--muted:#9ca3af;--border:#2e3446;--accent:#3b82f6}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px}
+header{text-align:center;width:100%;max-width:640px;margin-bottom:12px}
+h1{font-size:1.2rem}.sub{font-size:.78rem;color:var(--muted);margin-top:4px}
+.viewport{position:relative;width:100%;max-width:640px;aspect-ratio:4/3;background:#000;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px #0008}
+canvas{width:100%;height:100%;display:block}
+video{display:none}
+.badge{position:absolute;top:8px;left:8px;background:#000b;padding:4px 8px;border-radius:6px;font:700 .7rem monospace;color:#4ade80}
+.legend{position:absolute;bottom:8px;left:8px;right:8px;background:#000b;padding:7px 10px;border-radius:8px;font-size:.68rem}
+.bar{height:7px;border-radius:4px;background:linear-gradient(90deg,#808080 0%,#2563eb 22%,#06b6d4 42%,#eab308 62%,#f97316 80%,#ef2222 100%)}
+.labels{display:flex;justify-content:space-between;color:#c5c7cc;margin-top:3px}
+.panel{width:100%;max-width:640px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;display:flex;flex-direction:column;gap:11px}
+.row{display:flex;flex-direction:column;gap:5px}.label{display:flex;justify-content:space-between;color:var(--muted);font-size:.8rem}.value{color:#fff;font-family:monospace;font-weight:700}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select,button{background:#272b38;color:#fff;border:1px solid var(--border);padding:9px 11px;border-radius:8px;font-size:.82rem}
+select{width:100%}button{font-weight:600;cursor:pointer}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.primary{background:#2563eb;border-color:#3b82f6}
+.status{font-size:.72rem;color:var(--muted);background:#141721;border:1px dashed var(--border);padding:8px 10px;border-radius:8px;line-height:1.4}
+.check{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.8rem}.check input{accent-color:#3b82f6}
+</style>
 </head>
 <body>
+<header>
+<h1>🔬 Micro-Vibration Motion Magnifier</h1>
+<div class="sub">Dense pixel motion • sub-pixel sensitivity • up to 200× amplification</div>
+</header>
 
-  <header>
-    <h1>🔬 Micro-Vibration Magnifier</h1>
-    <p>Place phone on a completely stable surface / mount</p>
-  </header>
+<div class="viewport">
+<video id="webcam" playsinline muted autoplay></video>
+<canvas id="output"></canvas>
+<div class="badge" id="fps">0 FPS</div>
+<div class="legend"><div class="bar"></div><div class="labels"><span>Still / Noise</span><span>Low</span><span>Medium</span><span>High</span><span>Very high</span></div></div>
+</div>
 
-  <div class="viewport-container">
-    <video id="webcam" playsinline muted autoplay></video>
-    <canvas id="outputCanvas"></canvas>
-    <div class="fps-badge" id="fpsDisplay">0 FPS</div>
+<div class="panel">
+<div class="row"><div class="label"><span>Motion Amplification</span><span class="value" id="gainVal">200×</span></div>
+<input id="gain" type="range" min="1" max="200" step="1" value="200"></div>
 
-    <div class="color-legend">
-      <div class="legend-bar"></div>
-      <div class="legend-labels">
-        <span>Still (Grey)</span>
-        <span>Low (Blue)</span>
-        <span>Med (Yellow)</span>
-        <span>High (Red)</span>
-      </div>
-    </div>
-  </div>
+<div class="row"><div class="label"><span>Pixel Sensitivity</span><span class="value" id="sensVal">High</span></div>
+<input id="sens" type="range" min="0.05" max="3" step="0.05" value="0.35"></div>
 
-  <div class="controls-panel">
-    <!-- Magnification Gain -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>Amplification Gain</span>
-        <span class="value" id="gainValue">50x</span>
-      </div>
-      <input type="range" id="gainSlider" min="1" max="200" step="1" value="50" />
-    </div>
+<div class="row"><div class="label"><span>Motion Smoothing</span><span class="value" id="smoothVal">0.35</span></div>
+<input id="smooth" type="range" min="0.05" max="0.9" step="0.01" value="0.35"></div>
 
-    <!-- Noise Threshold -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>Noise Gate (Sensor Filter)</span>
-        <span class="value" id="noiseValue">2.0</span>
-      </div>
-      <input type="range" id="noiseSlider" min="0" max="15" step="0.2" value="2.0" />
-    </div>
+<div class="row"><div class="label"><span>Display</span></div>
+<select id="mode">
+<option value="heatmap">Dense Motion Heatmap</option>
+<option value="overlay">Heatmap + Live Image</option>
+<option value="vectors">Motion Field (debug)</option>
+</select></div>
 
-    <!-- Temporal Filter / Frequency Cutoff -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>Temporal Cutoff (Smoothing)</span>
-        <span class="value" id="filterValue">0.80</span>
-      </div>
-      <input type="range" id="filterSlider" min="0.05" max="0.95" step="0.01" value="0.80" />
-    </div>
+<label class="check"><input id="enhance" type="checkbox" checked> Enhance sub-pixel motion</label>
 
-    <!-- Display Mode -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>Display Mode</span>
-      </div>
-      <select id="displayMode">
-        <option value="heatmap" selected>Heatmap (Grey $\to$ Blue $\to$ Red)</option>
-        <option value="overlay">Heatmap Overlaid on Live Video</option>
-        <option value="magnified">Direct Amplified Video (Monochrome)</option>
-      </select>
-    </div>
+<div class="buttons">
+<button id="switch">🔄 Switch Camera</button>
+<button id="reset" class="primary">🎯 Reset / Calibrate</button>
+</div>
+<div class="status" id="status">
+<strong>How it works:</strong> This version estimates a motion vector for each image pixel instead of simply subtracting frames. That avoids the old “moving borders only” effect and colors the whole moving region according to displacement magnitude. Put the phone on a rigid mount, wait for exposure/focus to settle, then calibrate.
+</div>
+</div>
 
-    <!-- Action Buttons -->
-    <div class="button-group">
-      <button id="switchCamBtn">🔄 Switch Camera</button>
-      <button id="recalBtn" class="primary">🎯 Reset / Calibrate</button>
-    </div>
+<script>
+const video=document.getElementById('webcam'), out=document.getElementById('output'), octx=out.getContext('2d',{willReadFrequently:true});
+const gainEl=document.getElementById('gain'), sensEl=document.getElementById('sens'), smoothEl=document.getElementById('smooth');
+const modeEl=document.getElementById('mode'), enhanceEl=document.getElementById('enhance');
+const gainVal=document.getElementById('gainVal'),sensVal=document.getElementById('sensVal'),smoothVal=document.getElementById('smoothVal');
+const fpsEl=document.getElementById('fps'), statusEl=document.getElementById('status');
+let facing='environment',stream=null;
+const W=320; let H=240, pc=document.createElement('canvas'), pctx=pc.getContext('2d',{willReadFrequently:true});
+let prev=null, flowU=null,flowV=null, magSmooth=null, calibrated=false, frameNo=0,lastFps=performance.now(),fpsCount=0;
 
-    <div class="status-box">
-      <strong>Usage Tip:</strong> Even a tiny hand shake will overpower micro-vibrations. Lean the phone against a solid object or use a tripod, then tap <strong>Reset / Calibrate</strong>.
-    </div>
-  </div>
+// Heatmap: grey -> blue -> cyan -> yellow -> orange -> red
+const lut=new Uint8Array(256*3);
+function initLUT(){
+ for(let i=0;i<256;i++){
+  let t=i/255,r=128,g=128,b=128;
+  if(i>0){
+   const stops=[[0,[128,128,128]],[.22,[37,99,235]],[.42,[6,182,212]],[.62,[234,179,8]],[.80,[249,115,22]],[1,[239,34,34]]];
+   for(let s=1;s<stops.length;s++) if(t<=stops[s][0]){
+    const a=stops[s-1],z=stops[s],k=(t-a[0])/(z[0]-a[0]);
+    r=Math.round(a[1][0]*(1-k)+z[1][0]*k);g=Math.round(a[1][1]*(1-k)+z[1][1]*k);b=Math.round(a[1][2]*(1-k)+z[1][2]*k);break;
+   }
+  }
+  lut[i*3]=r;lut[i*3+1]=g;lut[i*3+2]=b;
+ }
+}
+initLUT();
 
-  <script>
-    const video = document.getElementById('webcam');
-    const canvas = document.getElementById('outputCanvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+function grayFromRGBA(d){
+ const g=new Float32Array(W*H);
+ for(let i=0,j=0;i<g.length;i++,j+=4) g[i]=0.299*d[j]+0.587*d[j+1]+0.114*d[j+2];
+ return g;
+}
+function blur3(a){
+ const b=new Float32Array(a.length);
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+  const i=y*W+x;
+  b[i]=(a[i-W-1]+2*a[i-W]+a[i-W+1]+2*a[i-1]+4*a[i]+2*a[i+1]+a[i+W-1]+2*a[i+W]+a[i+W+1])/16;
+ }
+ // borders
+ for(let x=0;x<W;x++){b[x]=a[x];b[(H-1)*W+x]=a[(H-1)*W+x]}
+ for(let y=0;y<H;y++){b[y*W]=a[y*W];b[y*W+W-1]=a[y*W+W-1]}
+ return b;
+}
 
-    const gainSlider = document.getElementById('gainSlider');
-    const gainValue = document.getElementById('gainValue');
-    const noiseSlider = document.getElementById('noiseSlider');
-    const noiseValue = document.getElementById('noiseValue');
-    const filterSlider = document.getElementById('filterSlider');
-    const filterValue = document.getElementById('filterValue');
-    const displayMode = document.getElementById('displayMode');
-    const switchCamBtn = document.getElementById('switchCamBtn');
-    const recalBtn = document.getElementById('recalBtn');
-    const fpsDisplay = document.getElementById('fpsDisplay');
+// Horn-Schunck dense optical flow. Every pixel receives a vector.
+// More iterations = more sensitive but more CPU.
+function denseFlow(cur,old,u,v,iterations){
+ const N=W*H;
+ const nu=new Float32Array(N),nv=new Float32Array(N);
+ for(let it=0;it<iterations;it++){
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+   const i=y*W+x;
+   const ua=(u[i-1]+u[i+1]+u[i-W]+u[i+W])/4;
+   const va=(v[i-1]+v[i+1]+v[i-W]+v[i+W])/4;
+   const Ix=(cur[i+1]-cur[i-1]+old[i+1]-old[i-1])*0.25;
+   const Iy=(cur[i+W]-cur[i-W]+old[i+W]-old[i-W])*0.25;
+   const It=cur[i]-old[i];
+   const denom=Ix*Ix+Iy*Iy+0.08;
+   const corr=(Ix*ua+Iy*va+It)/denom;
+   nu[i]=ua-Ix*corr; nv[i]=va-Iy*corr;
+  }
+  // keep borders
+  for(let x=0;x<W;x++){nu[x]=u[x];nv[x]=v[x];nu[(H-1)*W+x]=u[(H-1)*W+x];nv[(H-1)*W+x]=v[(H-1)*W+x]}
+  for(let y=0;y<H;y++){nu[y*W]=u[y*W];nv[y*W]=v[y*W];nu[y*W+W-1]=u[y*W+W-1];nv[y*W+W-1]=v[y*W+W-1]}
+  u.set(nu);v.set(nv);
+ }
+}
 
-    let currentFacingMode = 'environment';
-    let currentStream = null;
+async function startCamera(){
+ if(stream)stream.getTracks().forEach(t=>t.stop());
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60,min:30}},audio:false});
+  video.srcObject=stream;await video.play();
+  const ratio=(video.videoHeight||3)/(video.videoWidth||4);
+  H=Math.round(W*ratio);pc.width=W;pc.height=H;out.width=W;out.height=H;
+  prev=null;flowU=new Float32Array(W*H);flowV=new Float32Array(W*H);magSmooth=new Float32Array(W*H);calibrated=false;
+ }catch(e){alert("Camera Access Error: "+e.message+"\nUse HTTPS and allow camera access.")}
+}
+function reset(){prev=null;flowU.fill(0);flowV.fill(0);magSmooth.fill(0);calibrated=false}
+gainEl.oninput=()=>gainVal.textContent=gainEl.value+"×";
+sensEl.oninput=()=>{let v=+sensEl.value;sensVal.textContent=v<.4?"Very High":v<.8?"High":v<1.5?"Medium":"Low"};
+smoothEl.oninput=()=>smoothVal.textContent=(+smoothEl.value).toFixed(2);
+document.getElementById('switch').onclick=()=>{facing=facing==='environment'?'user':'environment';startCamera()};
+document.getElementById('reset').onclick=reset;
 
-    // Buffer processing resolution (optimized for real-time mobile 60fps)
-    const PROC_WIDTH = 320;
-    let PROC_HEIGHT = 240;
-
-    let procCanvas = document.createElement('canvas');
-    let procCtx = procCanvas.getContext('2d', { willReadFrequently: true });
-
-    // Temporal low-pass buffer
-    let lowPassR = null;
-    let lowPassG = null;
-    let lowPassB = null;
-
-    // FPS counter
-    let lastTime = performance.now();
-    let frameCount = 0;
-
-    // Pre-calculate 256-step Rainbow Heatmap LUT for 60fps performance
-    // 0 = Neutral Grey (#808080), then Blue -> Cyan -> Green -> Yellow -> Orange -> Red
-    const HEATMAP_LUT = new Uint8Array(256 * 3);
-
-    function initHeatmapLUT() {
-      for (let i = 0; i < 256; i++) {
-        const t = i / 255;
-        let r = 128, g = 128, b = 128; // default stillness grey
-
-        if (i > 0) {
-          if (t < 0.2) {
-            // Grey -> Blue
-            const k = t / 0.2;
-            r = Math.round(128 * (1 - k) + 30 * k);
-            g = Math.round(128 * (1 - k) + 80 * k);
-            b = Math.round(128 * (1 - k) + 240 * k);
-          } else if (t < 0.4) {
-            // Blue -> Cyan
-            const k = (t - 0.2) / 0.2;
-            r = Math.round(30 * (1 - k) + 0 * k);
-            g = Math.round(80 * (1 - k) + 210 * k);
-            b = Math.round(240 * (1 - k) + 230 * k);
-          } else if (t < 0.6) {
-            // Cyan -> Green / Yellow-Green
-            const k = (t - 0.4) / 0.2;
-            r = Math.round(0 * (1 - k) + 120 * k);
-            g = Math.round(210 * (1 - k) + 230 * k);
-            b = Math.round(230 * (1 - k) + 20 * k);
-          } else if (t < 0.8) {
-            // Green -> Yellow / Orange
-            const k = (t - 0.6) / 0.2;
-            r = Math.round(120 * (1 - k) + 250 * k);
-            g = Math.round(230 * (1 - k) + 130 * k);
-            b = Math.round(20 * (1 - k) + 0 * k);
-          } else {
-            // Orange -> Intense Red
-            const k = (t - 0.8) / 0.2;
-            r = Math.round(250 * (1 - k) + 255 * k);
-            g = Math.round(130 * (1 - k) + 20 * k);
-            b = 0;
-          }
-        }
-
-        HEATMAP_LUT[i * 3] = r;
-        HEATMAP_LUT[i * 3 + 1] = g;
-        HEATMAP_LUT[i * 3 + 2] = b;
-      }
-    }
-    initHeatmapLUT();
-
-    // Start Camera Stream
-    async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: currentFacingMode },
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 60, min: 30 }
-          },
-          audio: false
-        });
-
-        video.srcObject = currentStream;
-        await video.play();
-
-        const videoRatio = (video.videoHeight || 3) / (video.videoWidth || 4);
-        PROC_HEIGHT = Math.round(PROC_WIDTH * videoRatio);
-
-        procCanvas.width = PROC_WIDTH;
-        procCanvas.height = PROC_HEIGHT;
-        canvas.width = PROC_WIDTH;
-        canvas.height = PROC_HEIGHT;
-
-        resetFilter();
-      } catch (err) {
-        alert("Camera Access Error: " + err.message + "\nPlease ensure HTTPS is enabled and camera permissions are granted.");
-      }
-    }
-
-    function resetFilter() {
-      lowPassR = null;
-      lowPassG = null;
-      lowPassB = null;
-    }
-
-    // UI Event Listeners
-    gainSlider.addEventListener('input', (e) => {
-      gainValue.textContent = e.target.value + 'x';
-    });
-
-    noiseSlider.addEventListener('input', (e) => {
-      noiseValue.textContent = parseFloat(e.target.value).toFixed(1);
-    });
-
-    filterSlider.addEventListener('input', (e) => {
-      filterValue.textContent = parseFloat(e.target.value).toFixed(2);
-    });
-
-    switchCamBtn.addEventListener('click', () => {
-      currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-      startCamera();
-    });
-
-    recalBtn.addEventListener('click', resetFilter);
-
-    // Main Processing Loop
-    function processLoop() {
-      requestAnimationFrame(processLoop);
-
-      if (video.readyState < video.HAVE_CURRENT_DATA) return;
-
-      // Draw input frame to downsampled buffer
-      procCtx.drawImage(video, 0, 0, PROC_WIDTH, PROC_HEIGHT);
-      const imgData = procCtx.getImageData(0, 0, PROC_WIDTH, PROC_HEIGHT);
-      const data = imgData.data;
-      const totalPixels = PROC_WIDTH * PROC_HEIGHT;
-
-      // Initialize buffer on first run
-      if (!lowPassR || lowPassR.length !== totalPixels) {
-        lowPassR = new Float32Array(totalPixels);
-        lowPassG = new Float32Array(totalPixels);
-        lowPassB = new Float32Array(totalPixels);
-
-        for (let i = 0; i < totalPixels; i++) {
-          const idx = i * 4;
-          lowPassR[i] = data[idx];
-          lowPassG[i] = data[idx + 1];
-          lowPassB[i] = data[idx + 2];
-        }
-        return;
-      }
-
-      const alpha = parseFloat(filterSlider.value);
-      const gain = parseFloat(gainSlider.value);
-      const noiseThreshold = parseFloat(noiseSlider.value);
-      const mode = displayMode.value;
-
-      for (let i = 0; i < totalPixels; i++) {
-        const idx = i * 4;
-
-        const curR = data[idx];
-        const curG = data[idx + 1];
-        const curB = data[idx + 2];
-
-        // Temporal IIR Low-pass Filter: y[n] = y[n-1] + alpha * (x[n] - y[n-1])
-        const lpR = lowPassR[i] + alpha * (curR - lowPassR[i]);
-        const lpG = lowPassG[i] + alpha * (curG - lowPassG[i]);
-        const lpB = lowPassB[i] + alpha * (curB - lowPassB[i]);
-
-        lowPassR[i] = lpR;
-        lowPassG[i] = lpG;
-        lowPassB[i] = lpB;
-
-        // High-pass components (instant vibration/motion)
-        const diffR = curR - lpR;
-        const diffG = curG - lpG;
-        const diffB = curB - lpB;
-
-        // Motion magnitude across luminance/channels
-        const motionMag = Math.sqrt(diffR * diffR + diffG * diffG + diffB * diffB);
-
-        if (mode === 'heatmap') {
-          // Subtract noise threshold
-          const effectiveMotion = Math.max(0, motionMag - noiseThreshold);
-          let intensity = Math.round(effectiveMotion * gain * 0.8);
-          if (intensity > 255) intensity = 255;
-
-          const lutIdx = intensity * 3;
-          data[idx] = HEATMAP_LUT[lutIdx];
-          data[idx + 1] = HEATMAP_LUT[lutIdx + 1];
-          data[idx + 2] = HEATMAP_LUT[lutIdx + 2];
-        } 
-        else if (mode === 'overlay') {
-          // Blend heatmap on top of camera feed
-          const effectiveMotion = Math.max(0, motionMag - noiseThreshold);
-          let intensity = Math.round(effectiveMotion * gain * 0.8);
-          if (intensity > 255) intensity = 255;
-
-          if (intensity > 5) {
-            const lutIdx = intensity * 3;
-            const blend = Math.min(1.0, intensity / 120);
-            data[idx] = Math.round(curR * (1 - blend) + HEATMAP_LUT[lutIdx] * blend);
-            data[idx + 1] = Math.round(curG * (1 - blend) + HEATMAP_LUT[lutIdx + 1] * blend);
-            data[idx + 2] = Math.round(curB * (1 - blend) + HEATMAP_LUT[lutIdx + 2] * blend);
-          }
-        } 
-        else if (mode === 'magnified') {
-          // Direct phase/vibration amplified grayscale output
-          let grayDiff = 0.299 * diffR + 0.587 * diffG + 0.114 * diffB;
-          if (Math.abs(grayDiff) < noiseThreshold) grayDiff = 0;
-          
-          let val = 128 + grayDiff * gain;
-          if (val < 0) val = 0;
-          if (val > 255) val = 255;
-
-          data[idx] = val;
-          data[idx + 1] = val;
-          data[idx + 2] = val;
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-
-      // Measure FPS
-      frameCount++;
-      const now = performance.now();
-      if (now - lastTime >= 1000) {
-        fpsDisplay.textContent = `${frameCount} FPS`;
-        frameCount = 0;
-        lastTime = now;
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      startCamera();
-      requestAnimationFrame(processLoop);
-    });
-  </script>
-</body>
-</html>
+function process(){
+ requestAnimationFrame(process);
+ if(video.readyState<video.HAVE_CURRENT_DATA)return;
+ pctx.drawImage(video,0,0,W,H);
+ const rgba=pctx.getImageData(0,0,W,H);
+ let cur=blur3(grayFromRGBA(rgba.data));
+ if(!prev){prev=cur;return}
+ const sensitivity=+sensEl.value, smoothing=+smoothEl.value, gain=+gainEl.value;
+ // Estimate dense sub-pixel displacement.
+ denseFlow(cur,prev,flowU,flowV,enhanceEl.checked?3:2);
+ const d=rgba.data,N=W*H,mode=modeEl.value;
+ for(let i=0;i<N;i++){
+  let m=Math.hypot(flowU[i],flowV[i]);
+  // Adaptive sensor-noise floor: very small vectors are suppressed, not hard-edged.
+  const effective=Math.max(0,(m-sensitivity*0.08));
+  const sm=magSmooth[i]*(1-smoothing)+effective*smoothing;magSmooth[i]=sm;
+  // Gain maps displacement to visible heat. 200× means a 0.01-pixel displacement
+  // is treated as 2 pixels of visual motion before the heatmap normalization.
+  let q=Math.min(1,sm*gain*0.005);
+  // Soft nonlinear boost preserves tiny motion while still reaching red.
+  q=1-Math.exp(-q*3.2);
+  const k=Math.max(0,Math.min(255,Math.round(q*255))),li=k*3,j=i*4;
+  if(mode==='heatmap'){
+   d[j]=lut[li];d[j+1]=lut[li+1];d[j+2]=lut[li+2];
+  }else if(mode==='overlay'){
+   const blend=Math.min(.92,q*1.4);
+   d[j]=Math.round(d[j]*(1-blend)+lut[li]*blend);
+   d[j+1]=Math.round(d[j+1]*(1-blend)+lut[li+1]*blend);
+   d[j+2]=Math.round(d[j+2]*(1-blend)+lut[li+2]*blend);
+  }else{
+   // Debug: vector direction encoded as hue, magnitude as brightness.
+   const ang=Math.atan2(flowV[i],flowU[i]), hue=(ang+Math.PI)/(2*Math.PI);
+   const s=.95,v=Math.max(.08,q),x=v*(1-Math.abs((hue*6)%2-1));
+   let rr=0,gg=0,bb=0; const h=Math.floor(hue*6);
+   if(h===0){rr=v;gg=x}else if(h===1){rr=x;gg=v}else if(h===2){gg=v;bb=x}else if(h===3){gg=x;bb=v}else if(h===4){rr=x;bb=v}else{rr=v;bb=x}
+   d[j]=rr*255;d[j+1]=gg*255;d[j+2]=bb*255;
+  }
+ }
+ octx.putImageData(rgba,0,0);prev=cur;
+ fpsCount++;const now=performance.now();if(now-lastFps>1000){fpsEl.textContent=fpsCount+" FPS";fpsCount=0;lastFps=now}
+}
+window.addEventListener('DOMContentLoaded',()=>{startCamera();requestAnimationFrame(process)});
+</script>
+</body></html>
